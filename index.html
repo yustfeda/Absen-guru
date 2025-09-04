@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi Guru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #10B981;
+            --color-secondary: #D1FAE5;
+            --color-text: #1F2937;
+            --color-white: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--color-text);
+            background-color: var(--color-white);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0px 6px 12px rgba(0,0,0,0.4);
+        }
+
+        .card {
+            @apply bg-white p-8 rounded-2xl shadow-xl border border-gray-100;
+        }
+
+        .hamburger-menu {
+            display: block;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .hamburger-menu span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background-color: var(--color-text);
+            margin: 5px 0;
+            transition: 0.4s;
+        }
+
+        .mobile-menu-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 40;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .mobile-menu-container.open {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .mobile-menu-container.open .backdrop {
+            opacity: 1;
+        }
+
+        .mobile-menu-container.open .mobile-menu {
+            transform: translateX(0);
+        }
+
+        .mobile-menu-container .backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .mobile-menu-container .mobile-menu {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 75%;
+            background-color: var(--color-white);
+            transform: translateX(100%);
+            transition: transform 0.5s ease;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* Styling for sticky table header and cell */
+        .rekap-table th.sticky {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+        }
+
+        .rekap-table td.sticky {
+            position: sticky;
+            left: 0;
+            z-index: 9;
+            background-color: #fff;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 768px) {
+            .navbar-desktop {
+                display: flex;
+            }
+            .hamburger-menu {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            .navbar-desktop {
+                display: none;
+            }
+        }
+
+        .footer-social-icon {
+            @apply text-xl md:text-2xl transition-transform transform hover:scale-125;
+        }
+
+        /* Mengatasi masalah halaman terpotong */
+        .main-content {
+            flex-grow: 1;
+        }
+
+        .page-content {
+            padding-top: 80px;
+            padding-bottom: 80px;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: #6B7280;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: color 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            color: #EF4444;
+        }
+
+        /* Loading Overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        #loading-overlay.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--color-primary);
+            border-top-color: var(--color-secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            margin-top: 16px;
+            font-size: 1.25rem;
+            color: var(--color-text);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Profile image styling with hover effect */
+        .profile-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), 0 6px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+        }
+
+        .profile-container:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3), 0 10px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .action-card {
+            @apply bg-white p-4 rounded-xl shadow-md border border-gray-100 flex flex-col items-center justify-center space-y-2 transition-transform transform hover:scale-105 hover:shadow-lg cursor-pointer;
+        }
+        
+        .action-card .icon {
+            @apply text-3xl md:text-4xl;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Navbar -->
+    <header class="bg-white shadow-sm py-4 px-6 md:px-12 fixed w-full z-40">
+        <nav class="flex justify-between items-center">
+            <a href="#" class="flex items-center space-x-2 text-2xl font-bold text-emerald-600">
+              <img id="logo-img" src="Lebak.png" alt="Logo" class="w-10 h-9 rounded-lg absolute top-3 left-1">
+                <span class = "absolute left-10">Absensi Guru</span>
+            </a>
+            <!-- Desktop Menu -->
+            <div id="navbar-desktop" class="navbar-desktop flex items-center space-x-4">
+                <button class="hidden md:inline-block btn" onclick="showPage('absen-page')">Absen</button>
+                <button class="hidden md:inline-block btn" onclick="showPage('admin-page')">Login Admin</button>
+                <button id="logout-admin-btn-desktop" class="btn hidden" onclick="logoutAdmin()">Logout Admin</button>
+            </div>
+            <!-- Mobile Menu -->
+            <div id="mobile-menu-toggle" class="hamburger-menu md:hidden" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Mobile Menu Container -->
+    <div id="mobile-menu-container" class="mobile-menu-container md:hidden">
+        <div class="backdrop" onclick="toggleMobileMenu()"></div>
+        <div id="mobile-menu" class="mobile-menu">
+            <button class="btn w-full" onclick="showPage('absen-page'); toggleMobileMenu();">Absen</button>
+            <button id="login-admin-btn-mobile" class="btn w-full" onclick="showPage('admin-page'); toggleMobileMenu();">Login Admin</button>
+            <button id="logout-admin-btn-mobile" class="btn w-full hidden" onclick="logoutAdmin(); toggleMobileMenu();">Logout Admin</button>
+        </div>
+    </div>
+    
+    <!-- Konten Halaman -->
+    <div class="main-content flex-grow flex flex-col">
+        <!-- Halaman Landing Page -->
+        <main id="landing-page" class="relative flex-1 flex flex-col justify-center items-center text-center p-6 page-content">
+            <!-- Overlay dengan blur dan transparansi -->
+            <div class="absolute inset-0 bg-white bg-opacity-70 backdrop-blur-sm"></div>
+            <!-- Konten -->
+            <div class="relative z-10 max-w-xl mx-auto py-12 md:py-20">
+                <div class="flex flex-col items-center mb-6">
+                    <!-- Profile Image with Shadow and Hover Effect -->
+                    <div class="profile-container mb-6">
+                        <img src="Lebak.png" alt="Profile Guru">
+                    </div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-emerald-800 leading-tight mb-2">
+                        Selamat Datang di Absensi Digital
+                    </h1>
+                    <p class="text-lg md:text-xl text-gray-500">
+                        Sistem yang dirancang untuk memudahkan absensi guru.
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="action-card" onclick="showPage('absen-page')">
+                        <span class="icon">🏃‍♂️</span>
+                        <span class="text-sm font-medium">Absen Masuk</span>
+                    </div>
+                    <div class="action-card">
+                        <span class="icon">🚶‍♂️</span>
+                        <span class="text-sm font-medium">Absen Keluar</span>
+                    </div>
+                    <div class="action-card">
+                        <span class="icon">☕</span>
+                        <span class="text-sm font-medium">Mulai Istirahat</span>
+                    </div>
+                    <div class="action-card">
+                        <span class="icon">🔔</span>
+                        <span class="text-sm font-medium">Selesai Istirahat</span>
+                    </div>
+                    <div class="action-card">
+                        <span class="icon">⏱️</span>
+                        <span class="text-sm font-medium">Mulai Lembur</span>
+                    </div>
+                    <div class="action-card">
+                        <span class="icon">🏁</span>
+                        <span class="text-sm font-medium">Selesai Lembur</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Halaman Absen -->
+        <section id="absen-page" class="hidden flex-1 flex flex-col justify-center items-center text-center p-6 page-content">
+            <div class="card w-full max-w-md mx-auto">
+                <h2 class="text-3xl font-bold mb-6 text-emerald-700">Absen Guru</h2>
+                <div class="space-y-4">
+                    <label for="teacher-select" class="block text-left text-sm font-medium text-gray-700">Pilih Nama Guru:</label>
+                    <select id="teacher-select" class="w-full px-4 py-2 border rounded-full focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="" disabled selected>-- Memuat Guru... --</option>
+                    </select>
+                    <p id="teacher-info" class="text-left text-sm text-gray-500 mt-2"></p>
+                    <button class="btn w-full mt-4" id="absen-btn" disabled>Absen</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Halaman Admin -->
+        <section id="admin-page" class="hidden flex-1 flex flex-col p-6 page-content">
+            <div id="admin-login-card" class="card w-full max-w-sm mx-auto my-auto">
+                <h2 class="text-3xl font-bold mb-6 text-emerald-700 text-center">Login Admin</h2>
+                <div class="space-y-4">
+                    <label for="admin-password" class="block text-sm font-medium text-gray-700">Password:</label>
+                    <input type="password" id="admin-password" class="w-full px-4 py-2 border rounded-full focus:ring-emerald-500 focus:border-emerald-500">
+                    <button class="btn w-full" onclick="loginAdmin()">Login</button>
+                </div>
+            </div>
+
+            <div id="admin-dashboard" class="hidden flex-1 flex flex-col">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <h2 class="text-2xl md:text-3xl font-bold text-emerald-700 mb-4 md:mb-0">Dashboard Admin</h2>
+                    <div class="flex items-center space-x-2 md:space-x-4">
+                        <span class="text-xs md:text-sm text-gray-500 truncate max-w-[150px] md:max-w-xs">User ID: <span id="user-id-display"></span></span>
+                    </div>
+                </div>
+
+                <!-- Modal for alerts -->
+                <div id="alert-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm relative">
+                        <div id="alert-icon" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                            <svg id="success-icon" class="w-10 h-10 text-emerald-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <svg id="error-icon" class="w-10 h-10 text-red-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </div>
+                        <p id="alert-message" class="text-gray-700 text-lg"></p>
+                        <button class="mt-4 px-6 py-2 rounded-full bg-emerald-500 text-white" onclick="closeAlert()">OK</button>
+                    </div>
+                </div>
+
+                <!-- Menu Admin -->
+                <div class="flex flex-wrap gap-4 mb-6">
+                    <button class="btn" onclick="showAdminContent('data-guru')">Data Guru</button>
+                    <button class="btn" onclick="showAdminContent('rekap-absen')">Rekap Absen</button>
+                    <button class="btn" onclick="showAdminContent('settings')">Pengaturan</button>
+                </div>
+
+                <!-- Halaman Data Guru -->
+                <div id="data-guru" class="card hidden p-6 overflow-hidden">
+                    <h3 class="text-2xl font-bold mb-4">Input Data Guru</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label for="teacher-name" class="block text-sm font-medium">Nama Guru</label>
+                            <input type="text" id="teacher-name" class="w-full px-4 py-2 border rounded-full" required>
+                        </div>
+                        <div class="space-y-2">
+                            <label for="subject-name" class="block text-sm font-medium">Nama Mapel</label>
+                            <input type="text" id="subject-name" class="w-full px-4 py-2 border rounded-full" required>
+                        </div>
+                        <div class="space-y-2">
+                            <label for="subject-abbr" class="block text-sm font-medium">Singkatan Mapel</label>
+                            <input type="text" id="subject-abbr" class="w-full px-4 py-2 border rounded-full" required>
+                        </div>
+                    </div>
+                    <button class="btn w-full mt-4" onclick="addTeacher()">Tambahkan Guru</button>
+
+                    <h3 class="text-xl font-bold mt-8 mb-4">Daftar Guru</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left table-auto">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600 uppercase text-xs leading-normal">
+                                    <th class="py-3 px-2 text-left">Nama</th>
+                                    <th class="py-3 px-2 text-left">Mapel</th>
+                                    <th class="py-3 px-2 text-left">Singkatan</th>
+                                    <th class="py-3 px-2 text-left">PIN</th>
+                                    <th class="py-3 px-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teacher-list" class="text-gray-600 text-xs font-light">
+                                <!-- Data guru akan dimuat di sini -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Halaman Rekap Absen -->
+                <div id="rekap-absen" class="card hidden p-6">
+                    <h3 class="text-2xl font-bold mb-4">Rekap Absensi</h3>
+                    <!-- Dropdown dan Tombol diatur ke bawah dengan flex-col -->
+                    <div class="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4">
+                        <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                <label class="block text-sm font-medium">Bulan:</label>
+                                <select id="month-select" class="px-4 py-2 border rounded-full">
+                                    <!-- Opsi bulan akan diisi oleh JavaScript -->
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="block text-sm font-medium">Tahun:</label>
+                                <select id="year-select" class="px-4 py-2 border rounded-full">
+                                    <!-- Opsi tahun akan diisi oleh JavaScript -->
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="block text-sm font-medium">Mapel:</label>
+                                <select id="subject-filter" class="px-4 py-2 border rounded-full">
+                                    <option value="all">Semua Mapel</option>
+                                    <!-- Opsi mapel akan diisi oleh JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex flex-col md:flex-row gap-2 mt-2 md:mt-0">
+                            <button class="btn px-4 py-2 w-full md:w-auto" onclick="downloadRekapExcel()">Download Excel</button>
+                            <button class="btn px-4 py-2 w-full md:w-auto" onclick="downloadRekapPDF()">Download PDF</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="rekap-table" class="w-full text-sm text-left table-auto">
+                            <thead>
+                                <tr id="rekap-header" class="bg-gray-100 text-gray-600 uppercase text-xs leading-normal">
+                                    <th class="py-3 px-6 text-left whitespace-nowrap">Nama Guru</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rekap-body" class="text-gray-600 text-sm font-light">
+                                <!-- Data rekap akan dimuat di sini -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Halaman Pengaturan -->
+                <div id="settings" class="card hidden p-6">
+                    <h3 class="text-2xl font-bold mb-4">Pengaturan</h3>
+                    <div class="space-y-4">
+                        <label for="logo-url-input" class="block text-sm font-medium">URL Logo Website</label>
+                        <input type="text" id="logo-url-input" class="w-full px-4 py-2 border rounded-full" placeholder="Masukkan URL gambar baru">
+                        <button class="btn" onclick="updateLogoFromInput()">Perbarui Logo</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal Pop-up Absen -->
+    <div id="absen-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-sm w-full transform transition-transform duration-300 scale-95 opacity-0 relative" id="absen-modal-content">
+            <button class="modal-close-btn" onclick="closeAbsenModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="text-xl font-bold text-emerald-700 mb-4">Absen</h3>
+            <p id="absen-popup-message" class="text-gray-600 mb-4">Silakan masukkan PIN Anda:</p>
+            <div id="pin-input-container" class="space-x-2 flex justify-center mb-4">
+                <input type="text" maxlength="1" class="pin-input w-12 h-12 text-center text-2xl border rounded-md focus:border-emerald-500 focus:ring-emerald-500">
+                <input type="text" maxlength="1" class="pin-input w-12 h-12 text-center text-2xl border rounded-md focus:border-emerald-500 focus:ring-emerald-500">
+                <input type="text" maxlength="1" class="pin-input w-12 h-12 text-center text-2xl border rounded-md focus:border-emerald-500 focus:ring-emerald-500">
+                <input type="text" maxlength="1" class="pin-input w-12 h-12 text-center text-2xl border rounded-md focus:border-emerald-500 focus:ring-emerald-500">
+            </div>
+            <button class="btn w-full" id="submit-pin-btn">Submit PIN</button>
+        </div>
+    </div>
+
+    <!-- Modal Edit Guru -->
+    <div id="edit-teacher-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
+            <button class="modal-close-btn" onclick="closeEditModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="text-xl font-bold text-emerald-700 mb-4">Edit Data Guru</h3>
+            <input type="hidden" id="edit-teacher-id">
+            <div class="space-y-4">
+                <div>
+                    <label for="edit-teacher-name" class="block text-sm font-medium">Nama Guru</label>
+                    <input type="text" id="edit-teacher-name" class="w-full px-4 py-2 border rounded-full" required>
+                </div>
+                <div>
+                    <label for="edit-subject-name" class="block text-sm font-medium">Nama Mapel</label>
+                    <input type="text" id="edit-subject-name" class="w-full px-4 py-2 border rounded-full" required>
+                </div>
+                <div>
+                    <label for="edit-subject-abbr" class="block text-sm font-medium">Singkatan Mapel</label>
+                    <input type="text" id="edit-subject-abbr" class="w-full px-4 py-2 border rounded-full" required>
+                </div>
+            </div>
+            <button class="btn w-full mt-6" onclick="saveTeacherEdits()">Simpan Perubahan</button>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6 mt-auto">
+        <div class="container mx-auto px-6 text-center">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <p class="text-sm">&copy; 2025 yustdan. Hak Cipta Dilindungi.</p>
+                <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                    <a href="#" class="text-gray-400 hover:text-white footer-social-icon"><i class="fab fa-whatsapp"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white footer-social-icon"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white footer-social-icon"><i class="fab fa-telegram-plane"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        //
+        // Loading Overlay
+        //
+        function showLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.add('visible');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            setTimeout(() => {
+                overlay.classList.remove('visible');
+            }, 1000); // Durasi loading 1 detik
+        }
+        
+        // Tampilkan loading saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', showLoading);
+        window.addEventListener('load', hideLoading);
+
+        //
+        // Konfigurasi Firebase Realtime Database
+        //
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8UgsEb5VO5NRoP9L6mxXKsSBEoqpt6d4",
+            authDomain: "absenguru-e4427.firebaseapp.com",
+            databaseURL: "https://absenguru-e4427-default-rtdb.firebaseio.com",
+            projectId: "absenguru-e4427",
+            storageBucket: "absenguru-e4427.appspot.com",
+            messagingSenderId: "552477530759",
+            appId: "1:552477530759:web:d1830bf9e23b7c14963622"
+        };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let userId;
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                userId = user.uid;
+            } else {
+                try {
+                    if (initialAuthToken) {
+                        await auth.signInWithCustomToken(initialAuthToken);
+                    } else {
+                        await auth.signInAnonymously();
+                    }
+                    userId = auth.currentUser.uid;
+                } catch (error) {
+                    console.error("Error signing in:", error);
+                }
+            }
+        });
+
+        //
+        // Logika Admin
+        //
+        const adminPassword = "passwordadmin123";
+        const adminLoginCard = document.getElementById('admin-login-card');
+        const adminDashboard = document.getElementById('admin-dashboard');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const loginAdminBtnDesktop = document.getElementById('login-admin-btn-desktop');
+        const logoutAdminBtnDesktop = document.getElementById('logout-admin-btn-desktop');
+        const loginAdminBtnMobile = document.getElementById('login-admin-btn-mobile');
+        const logoutAdminBtnMobile = document.getElementById('logout-admin-btn-mobile');
+        const subjectFilter = document.getElementById('subject-filter');
+
+        function loginAdmin() {
+            const passwordInput = document.getElementById('admin-password');
+            if (passwordInput.value === adminPassword) {
+                adminLoginCard.classList.add('hidden');
+                adminDashboard.classList.remove('hidden');
+                userIdDisplay.textContent = userId;
+                loginAdminBtnDesktop.classList.add('hidden');
+                logoutAdminBtnDesktop.classList.remove('hidden');
+                loginAdminBtnMobile.classList.add('hidden');
+                logoutAdminBtnMobile.classList.remove('hidden');
+                showAdminContent('data-guru');
+                loadTeachersAdmin();
+                loadRekap();
+                showAlert('Login berhasil!', 'success');
+            } else {
+                showAlert('Password salah!', 'error');
+            }
+        }
+
+        function logoutAdmin() {
+            adminDashboard.classList.add('hidden');
+            adminLoginCard.classList.remove('hidden');
+            document.getElementById('admin-password').value = '';
+            loginAdminBtnDesktop.classList.remove('hidden');
+            logoutAdminBtnDesktop.classList.add('hidden');
+            loginAdminBtnMobile.classList.remove('hidden');
+            logoutAdminBtnMobile.classList.add('hidden');
+            showPage('landing-page');
+        }
+
+        function showAdminContent(contentId) {
+            document.querySelectorAll('#admin-dashboard > .card').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.getElementById(contentId).classList.remove('hidden');
+        }
+
+        const subjectNameInput = document.getElementById('subject-name');
+        const subjectAbbrInput = document.getElementById('subject-abbr');
+
+        // Fungsi untuk mengotomatiskan singkatan
+        subjectNameInput.addEventListener('input', () => {
+            const subjectName = subjectNameInput.value.trim();
+            if (subjectName) {
+                const words = subjectName.split(' ');
+                const abbreviation = words.map(word => word.charAt(0).toUpperCase()).join('');
+                subjectAbbrInput.value = abbreviation;
+            } else {
+                subjectAbbrInput.value = '';
+            }
+        });
+
+        async function addTeacher() {
+            const teacherName = document.getElementById('teacher-name').value.trim();
+            const subjectName = subjectNameInput.value.trim();
+            const subjectAbbr = subjectAbbrInput.value.trim();
+
+            if (!teacherName || !subjectName || !subjectAbbr) {
+                showAlert('Mohon isi semua data guru.', 'error');
+                return;
+            }
+
+            try {
+                const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers`);
+                const snapshot = await teachersRef.orderByChild('name').equalTo(teacherName).once('value');
+                if (snapshot.exists()) {
+                    showAlert('Guru dengan nama ini sudah ada.', 'error');
+                    return;
+                }
+
+                const randomPIN = Math.floor(1000 + Math.random() * 9000).toString();
+                const colors = ['#38A169', '#3182CE', '#D69E2E', '#E53E3E', '#805AD5', '#DD6B20'];
+                const existingSubjects = await teachersRef.once('value');
+                const usedColors = [];
+                existingSubjects.forEach(child => {
+                    const data = child.val();
+                    if (data && data.color) usedColors.push(data.color);
+                });
+
+                let subjectColor = colors.find(color => !usedColors.includes(color)) || colors[Math.floor(Math.random() * colors.length)];
+
+                await teachersRef.push({
+                    name: teacherName,
+                    subject: subjectName,
+                    abbr: subjectAbbr,
+                    pin: randomPIN,
+                    color: subjectColor,
+                });
+
+                showAlert('Guru berhasil ditambahkan!', 'success');
+                document.getElementById('teacher-name').value = '';
+                subjectNameInput.value = '';
+                subjectAbbrInput.value = '';
+            } catch (error) {
+                console.error("Error adding teacher: ", error);
+                showAlert('Terjadi kesalahan saat menambahkan guru.', 'error');
+            }
+        }
+
+        async function loadTeachersAdmin() {
+            const teacherList = document.getElementById('teacher-list');
+            const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers`);
+
+            teachersRef.on('value', (snapshot) => {
+                teacherList.innerHTML = '';
+                if (!snapshot.exists()) {
+                    teacherList.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Belum ada data guru.</td></tr>';
+                    return;
+                }
+                const teachersData = snapshot.val();
+                const sortedTeachers = Object.keys(teachersData).map(key => ({
+                    id: key,
+                    ...teachersData[key]
+                })).sort((a, b) => a.name.localeCompare(b.name));
+
+                sortedTeachers.forEach(data => {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'border-gray-200', 'hover:bg-gray-100');
+                    row.innerHTML = `
+                        <td class="py-3 px-2 whitespace-nowrap">${data.name}</td>
+                        <td class="py-3 px-2 whitespace-nowrap">${data.subject}</td>
+                        <td class="py-3 px-2 whitespace-nowrap">${data.abbr}</td>
+                        <td class="py-3 px-2 whitespace-nowrap">${data.pin}</td>
+                        <td class="py-3 px-2 text-center flex items-center justify-center space-x-2">
+                            <button onclick="openEditModal('${data.id}')" class="text-blue-500 hover:text-blue-700 font-bold" title="Edit Guru">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteTeacher('${data.id}')" class="text-red-500 hover:text-red-700 font-bold" title="Hapus Guru">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    `;
+                    teacherList.appendChild(row);
+                });
+            }, (error) => {
+                console.error("Error loading teachers: ", error);
+                showAlert('Gagal memuat daftar guru.', 'error');
+            });
+        }
+
+        async function deleteTeacher(teacherId) {
+            try {
+                const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers/${teacherId}`);
+                await teachersRef.remove();
+                showAlert('Guru berhasil dihapus.', 'success');
+            } catch (error) {
+                console.error("Error deleting teacher: ", error);
+                showAlert('Gagal menghapus guru.', 'error');
+            }
+        }
+
+        async function loadRekap() {
+            const rekapHeader = document.getElementById('rekap-header');
+            const rekapBody = document.getElementById('rekap-body');
+            const monthSelect = document.getElementById('month-select');
+            const yearSelect = document.getElementById('year-select');
+
+            rekapHeader.innerHTML = `<th class="py-3 px-6 text-left whitespace-nowrap">Nama Guru</th>`;
+            rekapBody.innerHTML = '';
+            monthSelect.innerHTML = '';
+            yearSelect.innerHTML = '';
+
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth();
+
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            months.forEach((month, index) => {
+                const option = document.createElement('option');
+                option.value = index + 1;
+                option.textContent = month;
+                if (currentMonth === index) {
+                    option.selected = true;
+                }
+                monthSelect.appendChild(option);
+            });
+
+            for (let i = currentYear - 5; i <= currentYear + 5; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                if (currentYear === i) {
+                    option.selected = true;
+                }
+                yearSelect.appendChild(option);
+            }
+
+            monthSelect.onchange = () => renderRekap();
+            yearSelect.onchange = () => renderRekap();
+            subjectFilter.onchange = () => renderRekap();
+
+            await loadSubjectFilter();
+            renderRekap();
+        }
+
+        async function loadSubjectFilter() {
+            const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers`);
+            const teachersSnapshot = await teachersRef.once('value');
+            const subjects = new Set();
+            teachersSnapshot.forEach(child => {
+                subjects.add(child.val().subject);
+            });
+
+            subjectFilter.innerHTML = '<option value="all">Semua Mapel</option>';
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                subjectFilter.appendChild(option);
+            });
+        }
+
+        async function renderRekap() {
+            const rekapHeader = document.getElementById('rekap-header');
+            const rekapBody = document.getElementById('rekap-body');
+            const month = document.getElementById('month-select').value;
+            const year = document.getElementById('year-select').value;
+            const selectedSubject = subjectFilter.value;
+
+            rekapHeader.innerHTML = `<th class="py-3 px-6 text-left whitespace-nowrap">Nama Guru</th>`;
+            rekapBody.innerHTML = '';
+
+            const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers`);
+            const absensiRef = db.ref(`artifacts/${appId}/public/data/absensi`);
+
+            try {
+                const teachersSnapshot = await teachersRef.once('value');
+                let teachersData = Object.keys(teachersSnapshot.val() || {}).map(key => ({ id: key, ...teachersSnapshot.val()[key] }));
+                
+                if (selectedSubject !== 'all') {
+                    teachersData = teachersData.filter(teacher => teacher.subject === selectedSubject);
+                }
+
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const dates = Array.from({ length: daysInMonth }, (_, i) => `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`);
+
+                dates.forEach(date => {
+                    const th = document.createElement('th');
+                    th.classList.add('py-3', 'px-6', 'text-center', 'whitespace-nowrap');
+                    th.textContent = date.slice(-2);
+                    rekapHeader.appendChild(th);
+                });
+
+                // Tambahkan kolom Total Hadir
+                const thTotal = document.createElement('th');
+                thTotal.classList.add('py-3', 'px-6', 'text-center', 'whitespace-nowrap');
+                thTotal.textContent = 'Total Hadir';
+                rekapHeader.appendChild(thTotal);
+
+                absensiRef.orderByChild('date').once('value').then(snapshot => {
+                    const absensiData = snapshot.val() || {};
+                    const absensiArray = Object.values(absensiData).filter(abs => abs.date.startsWith(`${year}-${String(month).padStart(2, '0')}`));
+
+                    teachersData.sort((a,b) => a.name.localeCompare(b.name)).forEach(teacher => {
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'border-gray-200');
+                        row.innerHTML = `<td class="py-3 px-6 whitespace-nowrap">${teacher.name}</td>`;
+                        rekapBody.appendChild(row);
+
+                        let totalAttendance = 0;
+                        dates.forEach(date => {
+                            const cell = document.createElement('td');
+                            cell.classList.add('py-3', 'px-6', 'text-center');
+
+                            const absenRecord = absensiArray.find(abs => abs.teacherId === teacher.id && abs.date === date);
+                            if (absenRecord) {
+                                cell.textContent = absenRecord.abbr;
+                                cell.style.backgroundColor = teacher.color + '33';
+                                cell.style.fontWeight = 'bold';
+                                totalAttendance++;
+                            } else {
+                                cell.textContent = '-';
+                            }
+                            row.appendChild(cell);
+                        });
+
+                        // Tambahkan sel Total Hadir
+                        const totalCell = document.createElement('td');
+                        totalCell.classList.add('py-3', 'px-6', 'text-center', 'font-bold');
+                        totalCell.textContent = totalAttendance;
+                        row.appendChild(totalCell);
+                    });
+                });
+
+            } catch (error) {
+                console.error("Error loading rekap data: ", error);
+                showAlert('Gagal memuat data rekap.', 'error');
+            }
+        }
+
+        async function downloadRekapExcel() {
+            const table = document.getElementById('rekap-table');
+            const worksheet = XLSX.utils.table_to_sheet(table);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Absensi");
+            const monthName = document.getElementById('month-select').options[document.getElementById('month-select').selectedIndex].text;
+            const year = document.getElementById('year-select').value;
+            XLSX.writeFile(workbook, `Rekap Absensi Guru Bulan ${monthName} ${year}.xlsx`);
+        }
+
+        async function downloadRekapPDF() {
+            const doc = new jspdf.jsPDF({
+                orientation: 'landscape',
+                unit: 'pt',
+                format: 'a4'
+            });
+
+            const table = document.getElementById('rekap-table');
+            const monthName = document.getElementById('month-select').options[document.getElementById('month-select').selectedIndex].text;
+            const year = document.getElementById('year-select').value;
+            const subject = subjectFilter.value === 'all' ? 'Semua Mata Pelajaran' : subjectFilter.value;
+            
+            const title = `Rekap Absensi Guru Bulan ${monthName} ${year}`;
+            const subtitle = `Filter: ${subject}`;
+            
+            doc.setFontSize(16);
+            doc.text(title, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(subtitle, doc.internal.pageSize.getWidth() / 2, 60, { align: 'center' });
+
+            const headers = Array.from(table.tHead.rows[0].cells).map(cell => cell.textContent);
+            const data = Array.from(table.tBodies[0].rows).map(row => Array.from(row.cells).map(cell => cell.textContent));
+
+            doc.autoTable({
+                head: [headers],
+                body: data,
+                startY: 80,
+                theme: 'striped',
+                headStyles: {
+                    fillColor: [243, 244, 246],
+                    textColor: [75, 85, 99]
+                },
+                styles: {
+                    fontSize: 8,
+                    overflow: 'linebreak',
+                    cellPadding: 3
+                },
+                columnStyles: {
+                    0: { cellWidth: 'auto', minCellWidth: 60 }
+                }
+            });
+
+            doc.save(`Rekap Absensi Guru Bulan ${monthName} ${year}.pdf`);
+        }
+
+        //
+        // Logika Absensi Guru
+        //
+        const teacherSelect = document.getElementById('teacher-select');
+        const absenBtn = document.getElementById('absen-btn');
+        const teacherInfo = document.getElementById('teacher-info');
+        const absenModal = document.getElementById('absen-modal');
+        const absenModalContent = document.getElementById('absen-modal-content');
+        const pinInputs = document.querySelectorAll('.pin-input');
+        const submitPinBtn = document.getElementById('submit-pin-btn');
+
+        async function loadTeachersForAbsen() {
+            const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers`);
+            try {
+                teachersRef.on('value', (snapshot) => {
+                    teacherSelect.innerHTML = '<option value="" disabled selected>-- Pilih Guru --</option>';
+                    if (!snapshot.exists()) {
+                         teacherSelect.innerHTML = '<option value="" disabled selected>-- Tidak ada data guru --</option>';
+                         return;
+                    }
+                    const teachersData = snapshot.val();
+                    const sortedTeachers = Object.keys(teachersData).map(key => ({
+                        id: key,
+                        ...teachersData[key]
+                    })).sort((a, b) => a.name.localeCompare(b.name));
+
+                    sortedTeachers.forEach(data => {
+                        const option = document.createElement('option');
+                        option.value = data.id;
+                        option.textContent = data.name;
+                        option.dataset.subject = data.subject;
+                        option.dataset.abbr = data.abbr;
+                        teacherSelect.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                console.error("Error loading teachers:", error);
+                showAlert('Gagal memuat daftar guru.', 'error');
+            }
+        }
+        loadTeachersForAbsen();
+
+        teacherSelect.addEventListener('change', () => {
+            const selectedOption = teacherSelect.options[teacherSelect.selectedIndex];
+            if (selectedOption.value) {
+                teacherInfo.textContent = `Mapel: ${selectedOption.dataset.subject} (${selectedOption.dataset.abbr})`;
+                absenBtn.disabled = false;
+            } else {
+                teacherInfo.textContent = '';
+                absenBtn.disabled = true;
+            }
+        });
+
+        absenBtn.addEventListener('click', () => {
+            absenModal.classList.remove('hidden');
+            setTimeout(() => {
+                absenModalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+            pinInputs[0].focus();
+        });
+
+        pinInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                if (e.target.value.length === 1 && index < pinInputs.length - 1) {
+                    pinInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+                    pinInputs[index - 1].focus();
+                }
+            });
+        });
+
+        submitPinBtn.addEventListener('click', async () => {
+            const enteredPIN = Array.from(pinInputs).map(input => input.value).join('');
+            if (enteredPIN.length !== 4) {
+                showAlert('PIN harus 4 digit!', 'error');
+                return;
+            }
+
+            const selectedTeacherId = teacherSelect.value;
+            if (!selectedTeacherId) {
+                showAlert('Pilih guru terlebih dahulu!', 'error');
+                return;
+            }
+
+            try {
+                const teacherRef = db.ref(`artifacts/${appId}/public/data/teachers/${selectedTeacherId}`);
+                const teacherSnapshot = await teacherRef.once('value');
+                const teacherData = teacherSnapshot.val();
+                
+                if (!teacherData || enteredPIN !== teacherData.pin) {
+                    showAlert('PIN salah. Mohon coba lagi.', 'error');
+                    closeAbsenModal();
+                    return;
+                }
+
+                const currentTime = new Date();
+                const today = currentTime.toISOString().split('T')[0];
+                const absensiRef = db.ref(`artifacts/${appId}/public/data/absensi`);
+
+                // Check for existing absence record for today
+                const existingAbsenQuery = await absensiRef.orderByChild('teacherId').equalTo(selectedTeacherId).once('value');
+                let alreadyAbsenToday = false;
+                existingAbsenQuery.forEach(child => {
+                    const data = child.val();
+                    if (data.date === today) {
+                        alreadyAbsenToday = true;
+                    }
+                });
+
+                if (alreadyAbsenToday) {
+                    showAlert('Anda sudah absen hari ini!', 'error');
+                } else {
+                    await absensiRef.push({
+                        teacherId: selectedTeacherId,
+                        teacherName: teacherData.name,
+                        abbr: teacherData.abbr,
+                        date: today,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    showAlert(`Terima kasih, Pak/Bu ${teacherData.name}! Absen berhasil.`, 'success');
+                }
+                
+                closeAbsenModal();
+            } catch (error) {
+                console.error("Error submitting absen:", error);
+                showAlert('Terjadi kesalahan saat memproses absensi.', 'error');
+                closeAbsenModal();
+            }
+        });
+
+        function closeAbsenModal() {
+            absenModalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                absenModal.classList.add('hidden');
+                pinInputs.forEach(input => input.value = '');
+            }, 300);
+        }
+
+        //
+        // Logo and Settings
+        //
+        let logoUrl = 'https://placehold.co/40x40/10B981/fff?text=LOGO';
+        const logoImg = document.getElementById('logo-img');
+
+        function updateLogo(newUrl) {
+            if (newUrl && newUrl.trim() !== '') {
+                logoUrl = newUrl;
+                logoImg.src = logoUrl;
+                showAlert('Logo berhasil diperbarui!', 'success');
+            } else {
+                showAlert('URL logo tidak valid.', 'error');
+            }
+        }
+
+        function updateLogoFromInput() {
+            const newUrl = document.getElementById('logo-url-input').value;
+            updateLogo(newUrl);
+        }
+
+        //
+        // Edit Teacher Modal
+        //
+        const editTeacherModal = document.getElementById('edit-teacher-modal');
+        const editTeacherIdInput = document.getElementById('edit-teacher-id');
+        const editTeacherNameInput = document.getElementById('edit-teacher-name');
+        const editSubjectNameInput = document.getElementById('edit-subject-name');
+        const editSubjectAbbrInput = document.getElementById('edit-subject-abbr');
+
+        async function openEditModal(teacherId) {
+            try {
+                const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers/${teacherId}`);
+                const snapshot = await teachersRef.once('value');
+                const teacherData = snapshot.val();
+
+                if (teacherData) {
+                    editTeacherIdInput.value = teacherId;
+                    editTeacherNameInput.value = teacherData.name;
+                    editSubjectNameInput.value = teacherData.subject;
+                    editSubjectAbbrInput.value = teacherData.abbr;
+                    editTeacherModal.classList.remove('hidden');
+                } else {
+                    showAlert('Data guru tidak ditemukan.', 'error');
+                }
+            } catch (error) {
+                console.error("Error fetching teacher data for edit:", error);
+                showAlert('Gagal memuat data guru.', 'error');
+            }
+        }
+
+        function closeEditModal() {
+            editTeacherModal.classList.add('hidden');
+        }
+
+        async function saveTeacherEdits() {
+            const teacherId = editTeacherIdInput.value;
+            const newName = editTeacherNameInput.value.trim();
+            const newSubject = editSubjectNameInput.value.trim();
+            const newAbbr = editSubjectAbbrInput.value.trim();
+
+            if (!newName || !newSubject || !newAbbr) {
+                showAlert('Mohon isi semua kolom.', 'error');
+                return;
+            }
+
+            try {
+                const teachersRef = db.ref(`artifacts/${appId}/public/data/teachers/${teacherId}`);
+                await teachersRef.update({
+                    name: newName,
+                    subject: newSubject,
+                    abbr: newAbbr
+                });
+                showAlert('Data guru berhasil diperbarui!', 'success');
+                closeEditModal();
+            } catch (error) {
+                console.error("Error updating teacher data:", error);
+                showAlert('Gagal memperbarui data guru.', 'error');
+            }
+        }
+
+        //
+        // Utils
+        //
+        function showPage(pageId) {
+            showLoading();
+            setTimeout(() => {
+                document.querySelectorAll('.page-content').forEach(page => page.classList.add('hidden'));
+                document.getElementById(pageId).classList.remove('hidden');
+                if (pageId === 'absen-page') loadTeachersForAbsen();
+                if (pageId === 'admin-page') {
+                    if (adminDashboard.classList.contains('hidden')) {
+                        document.getElementById('admin-login-card').classList.remove('hidden');
+                    } else {
+                        showAdminContent('data-guru');
+                        loadTeachersAdmin();
+                        loadRekap();
+                    }
+                }
+                hideLoading();
+            }, 1000);
+        }
+
+        function showAlert(message, type) {
+            const modal = document.getElementById('alert-modal');
+            const icon = document.getElementById('alert-icon');
+            const messageEl = document.getElementById('alert-message');
+            const okBtn = modal.querySelector('button');
+
+            messageEl.textContent = message;
+
+            document.getElementById('success-icon').classList.add('hidden');
+            document.getElementById('error-icon').classList.add('hidden');
+            icon.classList.remove('bg-emerald-100', 'bg-red-100');
+            okBtn.classList.remove('bg-emerald-500', 'bg-red-500');
+
+            if (type === 'success') {
+                document.getElementById('success-icon').classList.remove('hidden');
+                icon.classList.add('bg-emerald-100');
+                okBtn.classList.add('bg-emerald-500');
+            } else if (type === 'error') {
+                document.getElementById('error-icon').classList.remove('hidden');
+                icon.classList.add('bg-red-100');
+                okBtn.classList.add('bg-red-500');
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeAlert() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+
+        function toggleMobileMenu() {
+            const menuContainer = document.getElementById('mobile-menu-container');
+            menuContainer.classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
