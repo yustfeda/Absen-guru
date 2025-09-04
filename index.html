@@ -289,6 +289,65 @@
             </div>
         </nav>
     </header>
+<body>
+  
+  <!-- Isi halaman -->
+  <div id="beranda">
+    <!-- Konten beranda -->
+  </div>
+<!-- Tombol WhatsApp + Teks -->
+<div id="wa-button" style="
+  position: fixed;
+  bottom: 120px;
+  left: 30px;
+  z-index: 1000;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.5s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+">
+  <a href="https://wa.me/6281234567890" target="_blank" style="
+    background-color: #25D366;
+    color: white;
+    padding: 15px;
+    border-radius: 50%;
+    font-size: 22px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  ">
+    <i class="fab fa-whatsapp"></i>
+  </a>
+  <span style="
+    background-color: #25D366;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    font-family: sans-serif;
+  ">
+    Tanya²?
+  </span>
+</div>
+
+<!-- Script animasi tiap 5 detik -->
+<script>
+  const waBtn = document.getElementById('wa-button');
+  setInterval(() => {
+    if (document.getElementById('beranda')) {
+      const visible = waBtn.style.opacity === '1';
+      waBtn.style.opacity = visible ? '0' : '1';
+      waBtn.style.transform = visible ? 'scale(0)' : 'scale(1)';
+    }
+  }, 5000);
+</script>
+</body>
+<!-----AKHIR FAB ICON WA TANYA--------
 
     <!-- Mobile Menu Container -->
     <div id="mobile-menu-container" class="mobile-menu-container">
@@ -328,7 +387,7 @@
         <!-- Halaman Absen -->
         <section id="absen-page" class="hidden flex-1 flex flex-col justify-center items-center text-center p-6 page-content">
             <div class="card w-full max-w-md mx-auto">
-                <h2 class="text-3xl font-bold mb-6 text-emerald-700">Absen Guru</h2>
+                <h2 class="text-3xl mt-80 font-bold mb-6 text-emerald-700">Absen Guru</h2>
                 <div class="space-y-4">
                     <label for="teacher-select" class="block text-left text-sm font-medium text-gray-700">Pilih Nama Guru:</label>
                     <select id="teacher-select" class="w-full px-4 py-2 border rounded-full focus:ring-emerald-500 focus:border-emerald-500">
@@ -391,7 +450,7 @@
                             <input type="text" id="subject-name" class="w-full px-4 py-2 border rounded-full" required>
                         </div>
                         <div class="space-y-2">
-                            <label for="subject-abbr" class="block text-sm font-medium">Singkatan Mapel</label>
+                            <label for="subject-abbr" class="block text-sm font-medium">ID Mapel</label>
                             <input type="text" id="subject-abbr" class="w-full px-4 py-2 border rounded-full" required>
                         </div>
                     </div>
@@ -404,7 +463,7 @@
                                 <tr class="bg-gray-100 text-gray-600 uppercase text-xs leading-normal">
                                     <th class="py-3 px-2 text-left">Nama</th>
                                     <th class="py-3 px-2 text-left">Mapel</th>
-                                    <th class="py-3 px-2 text-left">Singkatan</th>
+                                    <th class="py-3 px-2 text-left">ID Mapel</th>
                                     <th class="py-3 px-2 text-left">PIN</th>
                                     <th class="py-3 px-2 text-center">Aksi</th>
                                 </tr>
